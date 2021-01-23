@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MapKit
 
 struct ContentView: View {
     var body: some View {
@@ -315,7 +316,22 @@ struct TextFieldView: View {
 
 struct ViewPresentationView: View {
     @State private var isShowOkAlert: Bool = false  // アラート表示のフラグ
-    var okAlert: Alert = Alert(title: Text("Download Success!"))    // アラートのコンテンツ
+    @State private var isShowErrorAlert: Bool = false   // アラート表示のフラグ
+    @State private var isShowRetryAlert: Bool = false   // アラート表示のフラグ
+    @State private var isShowSheet: Bool = false    // アラート表示のフラグ
+    @State private var isShowActionSheet: Bool = false  // アラート表示のフラグ
+    var okAlert: Alert = Alert(title: Text("Download Success!"))    // アラートタイトル
+    var errorAlert: Alert = Alert(title: Text("An error occurred"), // アラートタイトル
+                                  message: Text("Retry later!"),    // アラートメッセージ
+                                  dismissButton: .destructive(Text("destructive")))   // ボタンスタイル
+                                                                            // .cancel(_Text, action:) - 操作のキャンセル(別表示(一番下))
+                                                                            // .default(_Text, action:) - デフォルト(青表示)
+                                                                            // .destructive(_Text, action:) - 破壊的操作(赤表示)
+    var retryAlert: Alert = Alert(title: Text("Error"),
+                                  message: Text("please wait a minute"),
+                                  primaryButton: .default(Text("Retry"),    // ファーストボタン(右配置)
+                                                          action: { print("tapped retry button") }),
+                                  secondaryButton: .cancel())               // セカンドボタン(左配置)
     var body: some View {
         VStack {
             Button(action: {
@@ -328,16 +344,190 @@ struct ViewPresentationView: View {
             }
             .alert(isPresented: $isShowOkAlert) { () -> Alert in    // View Presentation(特定の条件下で追加Viewを表示)
                                                                     // .alert - アラート(第一引数: Binding<Bool>型変数, 第二引数(クロージャ): 表示アラート)
-                                                                    // .sheet - シート型モーダル表示
+                                                                    // .sheet - シート型モーダル
                                                                     // .actionSheet - 選択を催促するアクションシート
                 okAlert
+            }
+            Button(action: {
+                isShowErrorAlert = true
+            }) {
+                Image(systemName: "play")
+                    .resizable()
+                        .aspectRatio(contentMode: .fit)
+                    .frame(width: 44, height: 44)
+            }
+            .alert(isPresented: $isShowErrorAlert) { () -> Alert in
+                errorAlert
+            }
+            Button(action: {
+                isShowRetryAlert = true
+            }) {
+                Image(systemName: "person.badge.plus")
+                    .resizable()
+                        .aspectRatio(contentMode: .fit)
+                    .frame(width: 44, height: 44)
+            }
+            .alert(isPresented: $isShowRetryAlert) { () -> Alert in
+                retryAlert
+            }
+            
+            Button(action: {
+                isShowSheet = true
+            }) {
+                Image(systemName: "photo.on.rectangle")
+                    .resizable()
+                        .aspectRatio(contentMode: .fit)
+                    .frame(width: 60, height: 60)
+            }
+            .sheet(isPresented: $isShowSheet) { // シート型モーダル(isPresented - モーダル表示のフラグ)
+                Button(action: {    // シート型モーダルのコンテンツ
+                    isShowSheet = false // 遷移先でフラグをfalseに変更するとモーダルが閉じる
+                                        // ※スワイプでも閉じる(=フラグをfalseに変更する)ことが可能
+                }) {
+                    Text("Dismiss")
+                }
+            }
+            Button(action: {
+                isShowActionSheet = true
+            }) {
+                Image(systemName: "car")
+                    .resizable()
+                        .aspectRatio(contentMode: .fit)
+                    .frame(width: 60, height: 60)
+            }
+            .actionSheet(isPresented: $isShowActionSheet) { () -> ActionSheet in
+                ActionSheet(title: Text("交通手段"),
+                            message: Text("利用するものを選んでください"),
+                            buttons: [
+                                .default(Text("自動車"), action: {
+                                    print("自動車を選択")
+                                }),
+                                .default(Text("電車"), action: {
+                                    print("電車を選択")
+                                }),
+                                .destructive(Text("徒歩"), action: {
+                                    print("徒歩を選択。大変だよ。")
+                                }),
+                                .cancel(Text("選択しない"), action: {
+                                    print("未選択")
+                                }),
+                            ])
             }
         }
     }
 }
 
+struct LazyStackView: View {
+    var body: some View {
+        ScrollView {
+            LazyVStack {    // 画面外のViewは生成しない(->メモリ効率化)
+                ForEach(0 ..< 100) { _ in
+                    Image("dog")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                }
+            }
+        }
+    }
+}
+
+
+let threeColumns = [
+    GridItem(.fixed(100), spacing: 0),  // GridItem(_GridItem.Size, spacing:, alignment:) - rowやcolumnのセル
+                                        // _GridItem.Size: セルサイズ
+                                        // .fixed(_Int) - 指定数値で固定
+                                        // .flexible - 可能な限り拡大(標準)
+                                        // .adaptive - 可能な限り敷き詰める
+                                        // spacing: 次セルとの間隔
+    GridItem(.flexible(minimum: 10), spacing: 0),
+    GridItem(.adaptive(minimum: 10), spacing: 0),
+]
+struct LazyGridView: View {
+    let columns: [GridItem] // 呼び出し時に引数として定数threeColumsを指定
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 0) {   // 縦のグリッド表示
+                                                        // colums:([GridItem]の要素数)=(カラムのグリッド数),
+                                                        // spacing: セル間隔)
+                ForEach(0 ..< 100) { _ in
+                    Image("dog")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                }
+            }
+        }
+    }
+}
+
+struct TextEditorView: View {
+    @State private var text = ""
+    var body: some View {
+        TextEditor(text: $text)
+            .foregroundColor(.red)  // 文字色
+    }
+}
+
+struct ProgressViewView: View {
+    var body: some View {
+        ScrollView {
+            ProgressView("Downloading...")  // 進捗ビュー(アクティビティインジケータ)
+                                            // _ titleKey: LocalizedStringKey(ラベル)
+                .padding()
+            ProgressView("Downloading...", value: 30, total: 100)   // 進捗ビュー(プログレスバー)
+                                                                    // _ titleKey: LocalizedStringKey(ラベル)
+                                                                    // value: プログレスバーの現在値
+                                                                    // total: プログレスバーの最大値
+                .padding()
+        }
+    }
+}
+
+struct LinkView: View {
+    @Environment(\.openURL) private var openURL
+    let googleURL = URL(string: "https://google.com")!
+    var body: some View {
+        List {
+            Link("google", destination: googleURL)  // URLを指定してデフォルトのWebブラウザを表示
+                                                    // _titleKey: LocalizedStringKey(ラベル)
+                                                    // destination: URL(URL)
+            Link(destination: googleURL) {
+                Label("google", systemImage: "link")    // テキストとアイコンを並列表示
+                                                        // _titleKey: LocalizedStringKey(ラベル)
+                                                        // systemImage: String(アイコンとなるSF Symbols)
+            }
+            Button(action: {
+                openURL(googleURL)  // 指定したURLをWebブラウザで表示
+            }) {
+                Text("google with button")
+            }
+        }
+    }
+}
+
+struct MapView: View {
+    @State private var region = MKCoordinateRegion( // 緯度・経度・縮尺を有する構造体
+        center: CLLocationCoordinate2D( // 緯度・経度を有する構造体
+            latitude: 35.6593912,   // 緯度
+            longitude: 139.7003861  // 経度
+        ),
+        span: MKCoordinateSpan(     // 縮尺(マップの幅と高さ)
+            latitudeDelta: 0.01,    // マップに表示する緯度幅(範囲が広い方が優先される)
+            longitudeDelta: 0.01    // マップに表示する経度幅(範囲が広い方が優先される)
+        )
+    )
+    var body: some View {
+        Map(coordinateRegion: $region)
+            .edgesIgnoringSafeArea(.all)    // セーフエリアを無視
+    }
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-       ViewPresentationView()
+//        LazyGridViewの呼び出し用
+//        Group {
+//            LazyGridView(columns: threeColumns)
+//                .previewDevice(PreviewDevice(rawValue: "iPhone 11"))
+//        }
+        MapView()
     }
 }
