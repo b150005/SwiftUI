@@ -277,7 +277,12 @@ struct FixedSizeRectangle: View {
 
 struct TextFieldView: View {
     @State private var inputTextOne: String = ""    // Binding<String>型変数の定義
-    @State private var inputTextTwo: String = ""    // Binding<String>型変数の定義
+                                                    // データが値型 && 内部View自身でデータを保持・更新 -> @State(Property Wrapper)
+                                                    // データが値型 && 外部Viewがデータを保持・更新
+                                                    // ->   外部Viewでは@Stateで宣言
+                                                    //      内部Viewでは@Bindingで宣言
+                                                    // @Binding - 外部Viewからデータを渡され、内部Viewで更新する場合(使用時は$を付与)
+   @State private var inputTextTwo: String = ""    // Binding<String>型変数の定義
     var body: some View {
         VStack {
             TextField("input search keyword",   // 編集可能なテキストフィールド(第一引数:プレースホルダ, 第二引数:Binding型変数, 第三引数:入力開始時に呼び出されるクロージャ, 第四引数:入力終了時に呼び出されるクロージャ)
@@ -483,7 +488,9 @@ struct ProgressViewView: View {
 }
 
 struct LinkView: View {
-    @Environment(\.openURL) private var openURL
+    @Environment(\.openURL) private var openURL // @EnvironmentにKeyPathでopenURLを指定
+                                                // @Environment - View環境値の読み取り
+                                                // 参照(https://developer.apple.com/documentation/swiftui/environmentvalues)
     let googleURL = URL(string: "https://google.com")!
     var body: some View {
         List {
@@ -521,13 +528,130 @@ struct MapView: View {
     }
 }
 
+// 渡されるデータが値型の場合
+struct ParentView: View {
+    @State private var counter = 0  // 親View自身が保持する値型データには@Stateを付与
+    var body: some View {
+        HStack {
+            ChildView(counter: $counter)    // 外部View(子View)に対しBinding型で渡す
+                .frame(width: .infinity)
+        }
+    }
+}
+struct ChildView: View {
+    @Binding var counter: Int   // 外部View(親View)から渡される値型データを@Bindingで宣言
+    var body: some View {
+        Button(action: {
+            counter += 1
+        }) {
+            Text("\(counter)")
+                .font(.title)
+        }
+    }
+}
+
+struct EnvironmentView: View {
+    @Environment(\.colorScheme) var colorScheme: ColorScheme    // 列挙型ColorScheme - 配色に関するユーザ設定オプション
+                                                                // .dark - ダークモード
+                                                                // .light - ライトモード
+                                                                // 参照(https://developer.apple.com/documentation/swiftui/environmentvalues)
+    var body: some View {
+        List {
+            if colorScheme == .dark {
+                Text("dark mode")
+            } else if colorScheme == .light {
+                Text("light mode")
+            } else {
+                Text("")
+            }
+        }
+    }
+}
+
+// 渡されるデータが参照型の場合
+final class DataSource: ObservableObject {  // SwiftUIによる監視対象クラスにはObservableObjectプロトコルに準拠させる
+                                            // finalクラスにすることで、以下のメリットが生まれる
+                                            // 1. データの参照先が変わらない
+                                            // 2. インスタンスが保持するプロパティをcounterのみに保つことができる(サブクラスで継承できない)
+    @Published var counter = 0  // 監視対象データには@Published(Property Wrapper)を付与
+}
+struct CounterView: View {
+    @StateObject private var dataSource = DataSource()  // 監視対象クラスインスタンスdataSourceを生成
+                                                        // 監視対象クラスインスタンスには@StateObjectを付与
+                                                        // @StateObject - View自身で保持する参照型データオブジェクトに付与
+    var body: some View {
+        VStack {
+            Button("increment counter") {
+                dataSource.counter += 1
+            }
+            Text("count: \(dataSource.counter)")
+        }
+    }
+}
+
+// 親View→子Viewに渡されるデータが参照型の場合
+final class DataSource2: ObservableObject {
+    @Published var counter2 = 0     // 監視対象データには@Publishedを付与
+}
+struct ParentObjectView: View {
+    @StateObject var dataSource2 = DataSource2()    // 親View自身が保持する参照型データには@StateObjectを付与
+    var body: some View {
+        ChildObjectView(dataSource2: dataSource2)
+    }
+}
+struct ChildObjectView: View {
+    @ObservedObject var dataSource2: DataSource2    // 外部Viewから渡される参照型データには@ObservedObjectを付与
+    var body: some View {
+        VStack {
+            Button("increment counter2") {
+                dataSource2.counter2 += 1
+            }
+            Text("count: \(dataSource2.counter2)")
+        }
+    }
+}
+
+// 親View→孫Viewに渡されるデータが参照型の場合
+class DataSource3: ObservableObject {
+    @Published var counter3 = 0 // 監視対象データには@Publishedを付与
+}
+struct ParentObjectView2: View {
+    var body: some View {
+        ChildObjectView2()
+    }
+}
+struct ChildObjectView2: View {
+    var body: some View {
+        GrandChildView()
+    }
+}
+struct GrandChildView: View {
+    @EnvironmentObject var dataSource3: DataSource3
+    var body: some View {
+        Text("\(dataSource3.counter3)")
+    }
+}
+
 struct ContentView_Previews: PreviewProvider {
+//    ChildObjectViewの呼び出し用
+//    @StateObject static private var dataSource2 = DataSource2()
+//    ParentObjectView3の呼び出し用
+    @StateObject static private var dataSource3 = DataSource3()
     static var previews: some View {
+        ParentView().environmentObject(dataSource3)
 //        LazyGridViewの呼び出し用
 //        Group {
 //            LazyGridView(columns: threeColumns)
 //                .previewDevice(PreviewDevice(rawValue: "iPhone 11"))
 //        }
-        MapView()
+//        ChildObjectViewの呼び出し用
+//        ChildObjectView(dataSource2: dataSource2) // SwiftUIのライフサイクル
+//                                                    // 1. Source of TruthをもとにChildObjectViewが生成
+//                                                    // 2. ユーザに対してViewがレンダリング + Viewインスタンスが破棄
+//                                                    // @ObservedObjectはViewインスタンスの破棄と同時にオブジェクトが破棄される
+//                                                    // @StateObjectはViewインスタンスが破棄されてもSwiftUIによって保持される
+//                                                    // 3. ユーザがUIイベントを発火 or 非同期イベントが発火
+//                                                    // 4. Source of Truthの更新
+//                                                    // 5. 1.へ戻る
     }
 }
