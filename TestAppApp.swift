@@ -13,7 +13,7 @@ struct TestAppApp: App {    // Appプロトコル - アプリの構造と動作�
     var body: some Scene {  // Sceneプロトコルに準拠したbodyプロパティの実装
                             // Sceneプロトコル - シーン(=Viewのコンテナ)を表現
         WindowGroup {   // ウィンドウの集合(マルチウィンドウ(macOS, iPadOSのみ)を構成)
-            LinkView()  // 開発者独自のView
+            StorageView()  // 開発者独自のView
         }
     }
 }

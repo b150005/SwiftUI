@@ -632,13 +632,48 @@ struct GrandChildView: View {
     }
 }
 
+struct StorageView: View {
+    @SceneStorage("userName") private var userName: String = "" // シーン毎に保存するデータには@SceneStorageを付与
+                                                                // シーンのデータはシステムによって管理されているため、EOLが不明
+    @AppStorage("isLogin") private var isLogin = false  // @AppStorage - 値型データをデフォルトでUserDefaultsに格納するProperty Wrapper
+                                                        // キー: isLogin
+                                                        // UserDefaultsにデータが保存されるため、アプリ削除までデータが保存され続ける
+    @State private var memo: String = ""    // シーンで保存されないため、再起動で初期化される
+    var body: some View {
+        List {
+            TextField("Input your name", text: $userName)
+            Toggle("Login", isOn: $isLogin)
+            TextField("Input memo", text: $memo)
+        }
+    }
+}
+
+// Property Wrapperまとめ
+// 値型データ
+// @Binding - 外部Viewから渡されるデータに付与
+// @State - ビューで管理するデータに付与
+// @AppStorage - アプリで管理するデータに付与
+// @SceneStorage - シーンで管理するデータに付与
+// 参照型データ
+// @StateObject - 親ビューで管理するデータに付与
+// @ObservedObject - 子ビューで管理するデータに付与
+// @EnvironmentObject - 環境で管理するデータに付与
+// 環境値
+// @Environment - 環境値に関するデータに付与
+
 struct ContentView_Previews: PreviewProvider {
 //    ChildObjectViewの呼び出し用
-//    @StateObject static private var dataSource2 = DataSource2()
+//    @StateObject static private var dataSource2 = DataSource2()   // 親View自身が保持する参照型データには@StateObjectを付与
+                                                                    // 「静的変数」を表すstaticを付与
+                                                                    // 「内部利用」を表すprivate(メンバのアクセス制御)を付与
 //    ParentObjectView3の呼び出し用
-    @StateObject static private var dataSource3 = DataSource3()
+//    @StateObject static private var dataSource3 = DataSource3()
     static var previews: some View {
-        ParentView().environmentObject(dataSource3)
+        Group {
+            StorageView()
+            StorageView()
+        }
+//        ParentView().environmentObject(dataSource3)
 //        LazyGridViewの呼び出し用
 //        Group {
 //            LazyGridView(columns: threeColumns)
